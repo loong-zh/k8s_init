@@ -1,0 +1,5 @@
+ansible_ssh_user: loong
+ansible_ssh_port: 22
+ansible_ssh_password: 243662ae
+ansible_become_user: loong
+ansible_become_password: 243662ae

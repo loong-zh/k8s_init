@@ -1,0 +1,6 @@
+---
+- name: Initialization all node
+  hosts: all
+  become: true
+  roles:
+    - node

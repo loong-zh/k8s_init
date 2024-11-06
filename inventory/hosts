@@ -1,6 +1,10 @@
+[all]
+master
+worker
+
 [master]
-k8s-master01 ansible_hosts=192.168.124.102
+k8s-master01 ansible_ssh_hosts=192.168.124.102
 
 [worker]
-k8s-node01 ansible_hosts=192.168.124.103
-k8s-node02 ansible_hosts=192.168.124.104
+k8s-node01 ansible_ssh_hosts=192.168.124.103
+k8s-node02 ansible_ssh_hosts=192.168.124.104
