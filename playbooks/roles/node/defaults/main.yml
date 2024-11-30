@@ -1,0 +1,7 @@
+---
+ansible_distribution_release: "jammy"
+hosts_list:
+  test1: "192.168.124.111"
+  test2: "192.168.124.112"
+  test3: "192.168.124.113"
+k8s_repo_version: "1.28"

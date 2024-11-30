@@ -1,0 +1,43 @@
+---
+#- name: debug
+#  debug:
+#    var: hostvars
+- name: Set kubeapi_address
+  set_fact:
+    kube_apiserver_address: "{{ hostvars['test1']['ansible_ssh_hosts'] }}"
+
+- name: Create kubeadm config
+  ansible.builtin.template:
+    src: kubeadm-config.yaml.j2
+    dest: /etc/kubernetes/kubeadm-config.yaml
+    validate: "kubeadm config validate --config %s"
+
+- name: Init control plane nodes
+  ansible.builtin.command: "kubeadm init --config=/etc/kubernetes/kubeadm-config.yaml"
+
+- name: Mkdir cni-plugins directory
+  ansible.builtin.file:
+    path: /opt/cni/bin
+    state: directory
+
+- name: Install CNI plugins for remote url
+  ansible.builtin.unarchive:
+    src: "https://github.com/containernetworking/plugins/releases/download/v{{ item.value }}/cni-plugins-linux-amd64-v{{ item.value }}.tgz"
+    dest: /opt/cni/bin
+    remote_src: true
+  loop: "{{ cni_plugins_version }}"
+
+- name: Install nerdctl for remote url
+  ansible.builtin.unarchive:
+    src: https://github.com/containerd/nerdctl/releases/download/v{{ item.value }}/nerdctl-{{ item.value }}-linux-amd64.tar.gz
+    dest: /usr/local/bin
+    remote_src: true
+  loop: "{{ cli_version }}"
+
+
+
+# TODO: 打印kubeadm init后的信息，包括创建/root/.kube/config和kubeadm join命令
+#       创建集群网络
+#       node节点加入集群
+#       kubectl命令缩写和补全
+#       

@@ -1,0 +1,193 @@
+---
+- name: Load custom variable
+  ansible.builtin.include_vars:
+    file: vars.yml
+
+- name: Backup sources.list
+  ansible.builtin.copy:
+    src: /etc/apt/sources.list
+    dest: /etc/apt/sources.list.backup
+
+- name: Delete sources.list
+  ansible.builtin.file:
+    path: /etc/apt/sources.list
+    state: absent
+
+- name: Create aliyun sources.list from a template
+  ansible.builtin.template:
+    src: sources.list.j2
+    dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Run "apt-get update && "apt-get upgrade"
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+
+- name: Upgrade system kernel
+  ansible.builtin.apt:
+    name:
+      - curl
+      - net-tools
+      - nfs-kernel-server
+      - nfs-common
+      - ipset
+      - ipvsadm
+      - linux-headers-6.5.0-14-generic
+      - linux-image-6.5.0-14-generic
+      - linux-modules-6.5.0-14-generic
+      - linux-modules-extra-6.5.0-14-generic
+    state: present
+  register: upgrade_kernel
+
+- name: Mkdir data directory
+  ansible.builtin.file:
+    path: /data
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Mount an NFS volume
+  ansible.posix.mount:
+    src: 192.168.124.101:/mnt/data/k8s_pvc
+    path: /data
+    fstype: nfs
+    state: mounted
+
+- name: Disable swap in /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: ".*swap.*"
+    state: absent
+    backup: true
+
+- name: Off swap
+  ansible.builtin.command: swapoff -a
+
+- name: Reboot vm
+  ansible.builtin.reboot:
+    test_command: whoami
+  when: upgrade_kernel.changed
+
+- name: Update /etc/hosts file
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item.value }}    {{ item.key }}"
+  loop: "{{ hosts_list|dict2items }}"
+#- name: Update /etc/hosts file
+#  ansible.builtin.lineinfile:
+#    path: /etc/hosts
+#    line: '{{ item.value }}    {{ item.key }}'
+#  with_dict: "{{ hosts_list }}"
+
+- name: Load IPVS kernel modules
+  community.general.modprobe:
+    name:
+      - ip_vs
+      - ip_vs_rr
+      - ip_vs_wrr
+      - ip_vs_sh
+      - ip_vs_wlc
+      - ip_vs_lc
+      - br_netfilter
+      - nf_conntrack
+    state: present
+    persistent: present
+  register: modprobe_result
+  ignore_errors: true
+
+- name: Debug modprobe
+  debug:
+    var: modprobe_result.stderr
+  when: modprobe_result is defined
+
+- name: Enable network forwarding
+  ansible.builtin.copy:
+    src: k8s.conf
+    dest: /etc/sysctl.d/k8s.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Loading kernel parameters
+  ansible.builtin.command: sysctl --system
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add docker repository key file
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/ubuntu/gpg"
+    dest: "/etc/apt/keyrings/docker.asc"
+    mode: "0644"
+
+- name: Add docker repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Add kubernetes repository key file
+  ansible.builtin.get_url:
+    url: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version }}/deb/Release.key"
+    dest: "/etc/apt/keyrings/kubernetes-apt-keyring.asc"
+    mode: "0644"
+
+- name: Add kubernetes repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v{{ k8s_repo_version }}/deb/ /"
+    state: present
+    update_cache: yes
+
+- name: Install a list of packages
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - kubeadm
+      - kubelet
+      - kubectl
+      - containerd.io
+
+- name: Load IPVS kernel modules
+  ansible.general.modprobe:
+    name:
+    - ip_vs
+    - ip_vs_rr
+    - ip_vs_wrr
+    - ip_vs_sh
+    - nf_conntrack_ipv4
+    - ip_tables
+    - ip_set
+    - xt_set
+    - ipt_set
+    - ipt_rpfilter
+    - ipt_REJECT
+    - ipip
+    state: present
+    persistent: present
+
+- name: mkdir /etc/containerd
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+
+- name: save default containerd config to /etc/containerd/config.toml
+  ansible.builtin.shell: "containerd config default | tee /etc/containerd/config.toml"
+    
+- name: edit SystemdCgroup to be true in /etc/containerd/config.toml
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'SystemdCgroup = false'
+    replace: 'SystemdCgroup = true'
+
+- name: Enable service containerd
+  ansible.builtin.systemd_service:
+    name: containerd
+    daemon_reload: true
+    state: restarted

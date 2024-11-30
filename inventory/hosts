@@ -1,10 +1,11 @@
 [all]
-master
-worker
+test1 ansible_ssh_hosts=192.168.124.111
+test2 ansible_ssh_hosts=192.168.124.112
+test3 ansible_ssh_hosts=192.168.124.113
 
-[master]
-k8s-master01 ansible_ssh_hosts=192.168.124.102
+[control_plane]
+test1
 
 [worker]
-k8s-node01 ansible_ssh_hosts=192.168.124.103
-k8s-node02 ansible_ssh_hosts=192.168.124.104
+test2
+test3

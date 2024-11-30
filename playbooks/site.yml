@@ -1,6 +1,10 @@
 ---
 - name: Initialization all node
   hosts: all
-  become: true
   roles:
-    - node
+    - { role: ../roles/node }
+
+- name: Initialization k8s control-plane
+  hosts: control_plane
+  roles:
+    - { role: ../roles/master }

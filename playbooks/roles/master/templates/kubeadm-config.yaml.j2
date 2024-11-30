@@ -1,0 +1,42 @@
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+bootstrapTokens:
+- token: abcdef.abcdef0123456789
+  ttl: "24h"
+localAPIEndpoint:
+  advertiseAddress: {{ kube_apiserver_address }}
+  bindPort: 6443
+nodeRegistration:
+  criSocket: unix:///var/run/containerd/containerd.sock
+  imagePullPolicy: IfNotPresent
+  name: k8s-master01
+{% if 'control_plane' in group_names and 'worker' not in group_names %}
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+{% else %}
+  taints: []
+{% endif %}
+---
+kind: ClusterConfiguration
+apiVersion: kubeadm.k8s.io/v1beta3
+apiServer:
+  timeoutForControlPlane: 4m0s
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+controllerManager: {}
+dns: {}
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+imageRepository: registry.k8s.io
+kubernetesVersion: 1.28.0
+networking:
+  dnsDomain: cluster.local
+  serviceSubnet: 10.96.0.0/16
+  podSubnet: 192.168.0.0/12
+scheduler: {}
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: ipvs
