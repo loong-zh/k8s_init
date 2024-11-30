@@ -94,6 +94,7 @@
       - ip_vs_lc
       - br_netfilter
       - nf_conntrack
+      - nf_conntrack_ipv4
     state: present
     persistent: present
   register: modprobe_result
@@ -154,23 +155,8 @@
       - kubectl
       - containerd.io
 
-- name: Load IPVS kernel modules
-  ansible.general.modprobe:
-    name:
-    - ip_vs
-    - ip_vs_rr
-    - ip_vs_wrr
-    - ip_vs_sh
-    - nf_conntrack_ipv4
-    - ip_tables
-    - ip_set
-    - xt_set
-    - ipt_set
-    - ipt_rpfilter
-    - ipt_REJECT
-    - ipip
-    state: present
-    persistent: present
+- name: Hold packages for kubeadm、kubelet、kubectl and containerd.io
+  ansible.builtin.command: apt-mark hold kubeadm kubelet kubectl containerd.io
 
 - name: mkdir /etc/containerd
   ansible.builtin.file:

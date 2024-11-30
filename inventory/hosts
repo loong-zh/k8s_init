@@ -1,7 +1,7 @@
 [all]
-test1 ansible_ssh_hosts=192.168.124.111
-test2 ansible_ssh_hosts=192.168.124.112
-test3 ansible_ssh_hosts=192.168.124.113
+test1 ansible_ssh_hosts=192.168.124.111 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+test2 ansible_ssh_hosts=192.168.124.112 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+test3 ansible_ssh_hosts=192.168.124.113 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [control_plane]
 test1
